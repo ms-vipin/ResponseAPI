@@ -1,0 +1,39 @@
+[project]
+name = "responseapi"
+version = "0.1.0"
+description = "Two authenticated MCP servers with stateless and stateful Foundry Responses agents"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "azure-ai-projects>=2,<3",
+    "azure-identity>=1.26.0",
+    "mcp[cli]>=2.2,<3",
+    "openai>=3,<4",
+    "pydantic-settings>=2.15.0",
+    "uvicorn>=0.54.0",
+]
+
+[project.scripts]
+responseapi = "responseapi.local:main"
+responseapi-provision = "responseapi.foundry:main"
+
+[build-system]
+requires = ["uv_build>=0.11.2,<0.12.0"]
+build-backend = "uv_build"
+
+[[tool.uv.index]]
+name = "microsoft-approved-pypi"
+url = "https://packagefeedproxy.microsoft.io/pypi/simple"
+default = true
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "ipykernel>=7.3.0",
+    "ipywidgets>=8.1.9",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-mock>=3.16.0",
+    "ruff>=0.16.9",
+    "tqdm>=4.70.1",
+]

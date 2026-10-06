@@ -1,0 +1,123 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+requiredVersions:
+  azd: '>=1.32.0'
+  extensions:
+    azure.ai.agents: '>=1.0.0-beta.17'
+    azure.ai.connections: '>=1.0.0-beta.8'
+    azure.ai.toolboxes: '>=1.0.0-beta.8'
+name: foundry-mcp-responses
+services:
+  ai-project:
+    host: azure.ai.project
+    deployments:
+      - name: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+        model:
+          format: OpenAI
+          name: ${AZURE_AI_MODEL_NAME}
+          version: ${AZURE_AI_MODEL_VERSION}
+        sku:
+          name: ${AZURE_AI_MODEL_SKU}
+          capacity: 10
+  reference-mcp-connection:
+    host: azure.ai.connection
+    uses:
+      - ai-project
+    category: RemoteTool
+    target: ${BEARER_MCP_ENDPOINT}
+    authType: CustomKeys
+    credentials:
+      type: CustomKeys
+      keys:
+        Authorization: 'Bearer ${BEARER_MCP_TOKEN}'
+    env:
+      BEARER_MCP_ENDPOINT: ${BEARER_MCP_ENDPOINT}
+      BEARER_MCP_TOKEN: ${BEARER_MCP_TOKEN}
+  workflow-mcp-connection:
+    host: azure.ai.connection
+    uses:
+      - ai-project
+    category: RemoteTool
+    target: ${WORKLOAD_MCP_ENDPOINT}
+    authType: ProjectManagedIdentity
+    audience: ${WORKLOAD_MCP_AUDIENCE}
+    env:
+      WORKLOAD_MCP_ENDPOINT: ${WORKLOAD_MCP_ENDPOINT}
+      WORKLOAD_MCP_AUDIENCE: ${WORKLOAD_MCP_AUDIENCE}
+  reference-agent-tools:
+    host: azure.ai.toolbox
+    uses:
+      - ai-project
+      - reference-mcp-connection
+    description: Bearer-authenticated reference MCP tools
+    tools:
+      - type: mcp
+        server_label: reference-mcp
+        server_url: ${BEARER_MCP_ENDPOINT}
+        connection: reference-mcp-connection
+        allowed_tools:
+          - lookup_reference
+        require_approval: never
+  workflow-agent-tools:
+    host: azure.ai.toolbox
+    uses:
+      - ai-project
+      - workflow-mcp-connection
+    description: Managed-identity workflow MCP tools
+    tools:
+      - type: mcp
+        server_label: workflow-mcp
+        server_url: ${WORKLOAD_MCP_ENDPOINT}
+        connection: workflow-mcp-connection
+        allowed_tools:
+          - continue_workflow
+        require_approval: never
+  reference-hosted-agent:
+    host: azure.ai.agent
+    project: hosted-agents/reference-agent
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+      - reference-mcp-connection
+    kind: hosted
+    name: reference-hosted-agent
+    description: Stateless Responses agent backed by the bearer-authenticated MCP server.
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      BEARER_MCP_ENDPOINT: ${BEARER_MCP_ENDPOINT}
+      BEARER_MCP_AUTHORIZATION: ${{connections.reference-mcp-connection.credentials.Authorization}}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+  workflow-hosted-agent:
+    host: azure.ai.agent
+    project: hosted-agents/workflow-agent
+    language: python
+    codeConfiguration:
+      runtime: python_3_13
+      entryPoint: main.py
+    uses:
+      - ai-project
+    kind: hosted
+    name: workflow-hosted-agent
+    description: Stateful Responses agent backed by the managed-identity MCP server.
+    protocols:
+      - protocol: responses
+        version: 2.0.0
+    env:
+      AZURE_AI_MODEL_DEPLOYMENT_NAME: ${AZURE_AI_MODEL_DEPLOYMENT_NAME}
+      WORKLOAD_MCP_ENDPOINT: ${WORKLOAD_MCP_ENDPOINT}
+      WORKLOAD_MCP_AUDIENCE: ${WORKLOAD_MCP_AUDIENCE}
+    container:
+      resources:
+        cpu: '0.5'
+        memory: 1Gi
+infra:
+  provider: microsoft.foundry

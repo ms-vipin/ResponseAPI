@@ -1,0 +1,19 @@
+[project]
+name = "workflow-hosted-agent"
+version = "0.1.0"
+description = "Stateful Foundry Hosted Agent with a direct managed-identity MCP tool"
+requires-python = ">=3.13"
+dependencies = [
+    "agent-framework-foundry>=1.13,<2",
+    "agent-framework-foundry-hosting>=1.0.0b260918,<2",
+    "azure-identity>=1.26.0",
+    "httpx>=0.28.1,<1",
+    "mcp>=1.24,<2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-mock>=3.16.0",
+]
